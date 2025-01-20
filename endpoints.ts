@@ -30,11 +30,16 @@ for await (const walkEntry of walk(cwd)) {
     ? 'file'
     : 'directory';
 
+  console.log(type, walkEntry);
+  console.log('-------')
+
   if (type !== 'file') {
     continue;
   }
 
   const path = `.${walkEntry.path.substring(cwd.length).replaceAll('\\', '/')}`;
+  console.log('path', path);
+  console.log('-------')
   if (!path.startsWith('./api')) {
     continue;
   }

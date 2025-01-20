@@ -7,19 +7,21 @@ config({ export: true, path: '.env.local' });
 const MONGODB_URL = Deno.env.get('MONGODB_URL');
 
 if (!MONGODB_URL && typeof MONGODB_URL !== 'string') {
-  console.log('Please define the MONGODB_URL environment variable inside .env.local');
+  console.log(
+    'Please define the MONGODB_URL environment variable inside .env.local'
+  );
   // throw new Error(
   //   'Please define the MONGODB_URL environment variable inside .env.local'
   // );
 }
 
-let client;
+let client: mongoose.Mongoose | null = null;
 let state = 'not-started';
 
 async function connect() {
   state = 'connecting';
   console.log('Connecting to MongoDB...');
-  client = await mongoose.connect(MONGODB_URL as string || 'mongodb+srv://');
+  client = await mongoose.connect((MONGODB_URL as string) || '');
 
   if (!client) {
     state = 'failed';
@@ -48,9 +50,9 @@ const stateMiddleware: Middleware = (ctx, next) => {
       status: 500,
     },
     connected: {
-      body: "",
-      status: 0
-    }
+      body: '',
+      status: 0,
+    },
   };
 
   if (state !== 'connected') {

@@ -7,9 +7,10 @@ config({ export: true, path: '.env.local' });
 const MONGODB_URL = Deno.env.get('MONGODB_URL');
 
 if (!MONGODB_URL && typeof MONGODB_URL !== 'string') {
-  throw new Error(
-    'Please define the MONGODB_URL environment variable inside .env.local'
-  );
+  console.log('Please define the MONGODB_URL environment variable inside .env.local');
+  // throw new Error(
+  //   'Please define the MONGODB_URL environment variable inside .env.local'
+  // );
 }
 
 let client;

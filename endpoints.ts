@@ -54,11 +54,16 @@ for await (const walkEntry of walk(cwd)) {
       ({ pattern, GET, POST, PUT, DELETE, PATCH } = await import(path));
     } else {
       ({ pattern, GET, POST, PUT, DELETE, PATCH } = await import(
-        `file://${Deno.cwd()}${path.substring(1)}`
+        walkEntry.path
       ));
     }
   } catch (error) {
-    console.error(`Failed to import ${path}:`, error);
+    console.error(
+      `Failed to import ${
+        Deno.build.os === 'windows' ? path : walkEntry.path
+      }:`,
+      error
+    );
     continue;
   }
   const method: AllMethods | '' = '';

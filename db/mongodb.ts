@@ -21,12 +21,11 @@ let state = 'not-started';
 async function connect() {
   state = 'connecting';
   console.log('Connecting to MongoDB...');
-  // client = await mongoose.connect((MONGODB_URL as string) || '');
+  client = await mongoose.connect((MONGODB_URL as string) || '');
 
   if (!client) {
     state = 'failed';
-    return;
-    // throw new Error('MongoDB connection failed');
+    throw new Error('MongoDB connection failed');
   }
 
   state = 'connected';

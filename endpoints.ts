@@ -44,7 +44,13 @@ for await (const walkEntry of walk(cwd)) {
     continue;
   }
 
-  const { pattern, GET, POST, PUT, DELETE, PATCH } = await import(path);
+  let pattern, GET, POST, PUT, DELETE, PATCH;
+  try {
+    ({ pattern, GET, POST, PUT, DELETE, PATCH } = await import(path));
+  } catch (error) {
+    console.error(`Failed to import ${path}:`, error);
+    continue;
+  }
   const method: AllMethods | '' = '';
   const availableMethods: Array<AllMethods> = [];
   const methods: { [key in AllMethods]?: (ctx: ctx) => Response | Promise<Response> } = { GET, POST, PUT, DELETE, PATCH };

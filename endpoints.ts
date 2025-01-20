@@ -51,22 +51,19 @@ for await (const walkEntry of walk(cwd)) {
   }
 
   // ./api/Users/whoAmI.ts -> Users/whoAmI
-  const afterAPI = path.substring(6);
+  // const afterAPI = path.substring(6);
+
+  const actualPath = Deno.build.os === 'windows' 
+  ? path
+  : new URL(path.substring(2), import.meta.url).href;
 
   let pattern, GET, POST, PUT, DELETE, PATCH;
   try {
-    if (Deno.build.os === 'windows') {
-      ({ pattern, GET, POST, PUT, DELETE, PATCH } = await import(path));
-    } else {
-      ({ pattern, GET, POST, PUT, DELETE, PATCH } = await import(
-        `@api/${afterAPI}`
-      ));
-    }
+      ({ pattern, GET, POST, PUT, DELETE, PATCH } = await import(actualPath));
+    
   } catch (error) {
     console.error(
-      `Failed to import ${
-        Deno.build.os === 'windows' ? path : `@api/${afterAPI}`
-      }:`,
+      `Failed to import ${actualPath}`,
       error
     );
     continue;

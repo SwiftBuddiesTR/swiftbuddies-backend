@@ -55,12 +55,11 @@ for await (const walkEntry of walk(cwd)) {
 
   const actualPath = Deno.build.os === 'windows' 
   ? path
-  : new URL(path.substring(2), import.meta.url).href;
+  : walkEntry.path;
 
   let pattern, GET, POST, PUT, DELETE, PATCH;
   try {
       ({ pattern, GET, POST, PUT, DELETE, PATCH } = await import(actualPath));
-    
   } catch (error) {
     console.error(
       `Failed to import ${actualPath}`,

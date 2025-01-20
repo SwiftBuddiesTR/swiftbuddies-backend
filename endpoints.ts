@@ -39,6 +39,8 @@ for await (const walkEntry of walk(cwd)) {
     ? 'file'
     : 'directory';
 
+  console.log(type, walkEntry.path);
+
   if (type !== 'file') {
     continue;
   }

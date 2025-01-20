@@ -4,7 +4,16 @@ import { Context } from 'https://deno.land/x/oak@v17.1.4/mod.ts';
 // deno-lint-ignore no-explicit-any
 export type ctx = Context<Record<string, any>, Record<string, any>>;
 
-type AllMethods = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD' | 'CONNECT' | 'TRACE';
+type AllMethods =
+  | 'GET'
+  | 'POST'
+  | 'PUT'
+  | 'DELETE'
+  | 'PATCH'
+  | 'OPTIONS'
+  | 'HEAD'
+  | 'CONNECT'
+  | 'TRACE';
 
 const cwd = Deno.cwd();
 const endpoints: Array<{
@@ -15,14 +24,14 @@ const endpoints: Array<{
   handler: (ctx: ctx) => Response | Promise<Response>;
 }> = [];
 
- /*
-   * Loop through all files in the current directory and subdirectories
-   * to find the handler for the requested URL (just checks api folder)
-   *
-   * api\Users\whoAmI.ts -> ./api/Users/whoAmI.ts
-   * { pattern: new URLPattern({ pathname: "/api/whoAmI" }), handler: handler }
-   * IF MATCH -> handler(req)
-   */
+/*
+ * Loop through all files in the current directory and subdirectories
+ * to find the handler for the requested URL (just checks api folder)
+ *
+ * api\Users\whoAmI.ts -> ./api/Users/whoAmI.ts
+ * { pattern: new URLPattern({ pathname: "/api/whoAmI" }), handler: handler }
+ * IF MATCH -> handler(req)
+ */
 for await (const walkEntry of walk(cwd)) {
   const type = walkEntry.isSymlink
     ? 'symlink'
@@ -41,15 +50,26 @@ for await (const walkEntry of walk(cwd)) {
 
   let pattern, GET, POST, PUT, DELETE, PATCH;
   try {
-    ({ pattern, GET, POST, PUT, DELETE, PATCH } = await import(path));
+    if (Deno.build.os === 'windows') {
+      ({ pattern, GET, POST, PUT, DELETE, PATCH } = await import(path));
+    } else {
+      ({ pattern, GET, POST, PUT, DELETE, PATCH } = await import(
+        `file://${Deno.cwd()}${path.substring(1)}`
+      ));
+    }
   } catch (error) {
     console.error(`Failed to import ${path}:`, error);
     continue;
   }
   const method: AllMethods | '' = '';
   const availableMethods: Array<AllMethods> = [];
-  const methods: { [key in AllMethods]?: (ctx: ctx) => Response | Promise<Response> } = { GET, POST, PUT, DELETE, PATCH };
-  for (const [method, handler] of Object.entries(methods) as [AllMethods, (ctx: ctx) => Response | Promise<Response>][]) {
+  const methods: {
+    [key in AllMethods]?: (ctx: ctx) => Response | Promise<Response>;
+  } = { GET, POST, PUT, DELETE, PATCH };
+  for (const [method, handler] of Object.entries(methods) as [
+    AllMethods,
+    (ctx: ctx) => Response | Promise<Response>
+  ][]) {
     if (typeof handler === 'function') {
       availableMethods.push(method);
       endpoints.push({
@@ -69,7 +89,7 @@ for await (const walkEntry of walk(cwd)) {
     },
     handler: (ctx) => {
       ctx.response.headers.set('Allow', availableMethods.join(', '));
-      ctx.response.body = 'Look header\'s Allow property :)';
+      ctx.response.body = "Look header's Allow property :)";
       ctx.response.status = 200;
       return new Response(null, { status: 200 });
     },

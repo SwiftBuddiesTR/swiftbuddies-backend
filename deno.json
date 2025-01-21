@@ -5,7 +5,6 @@
   "imports": {
     "@std/assert": "jsr:@std/assert@1",
     "@/": "./",
-    "@api/": "./api/",
-    "@models/": "./db/models/"
+    "@api/": "./api/"
   }
 }

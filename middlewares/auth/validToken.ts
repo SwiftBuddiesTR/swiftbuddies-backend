@@ -1,5 +1,5 @@
 import { type ApplyMiddlewareParams } from '@/middlewares/applyMiddleware.ts';
-import { User } from '@models/Users.ts';
+import { User } from '@/db/models/Users.ts';
 
 // Bearer af9aiasd-avlds22 -> af9aiasd-avlds22
 function parseBearer(token: string) {

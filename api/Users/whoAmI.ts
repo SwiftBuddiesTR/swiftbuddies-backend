@@ -5,7 +5,7 @@ import {
   SetResponse,
   ValidationType
 } from '@/endpoints.ts';
-import { IUser, OptionalIUser } from '@models/Users.ts';
+import { IUser, OptionalIUser } from '@/db/models/Users.ts';
 import {z} from 'npm:zod';
 
 

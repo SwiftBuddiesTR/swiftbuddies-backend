@@ -1,6 +1,8 @@
 import mongoose from 'npm:mongoose';
 import { config } from 'https://deno.land/x/dotenv@v3.2.2/mod.ts';
 import { Middleware } from 'https://deno.land/x/oak@v17.1.4/middleware.ts';
+import process from "node:process";
+import { loop } from "@/lib/loop.ts";
 
 config({ export: true, path: '.env.local' });
 
@@ -20,19 +22,32 @@ let startTime: number | null = null;
 let state = 'not-started';
 
 async function connect() {
+  const stop = loop('Connecting to MongoDB...');
+
   state = 'connecting';
-  console.log('Connecting to MongoDB...');
+  // console.log('Connecting to MongoDB...');
   startTime = Date.now();
-  client = await mongoose.connect((MONGODB_URL as string) || '', { family: 4 });
+  client;
+
+  try {
+    client = await mongoose.connect((MONGODB_URL as string) || '')
+  } catch (err) {
+    state = 'failed';
+    stop();
+    console.error('✗ MongoDB connection error', err);
+    return;
+  }
 
   if (!client) {
     state = 'failed';
+    stop();
     throw new Error('MongoDB connection failed');
   }
 
   state = 'connected';
+  stop();
   console.log(
-    `MongoDB connected ${
+    `✓ MongoDB connected ${
       startTime
         ? `(took ${Math.floor((Date.now() - startTime) / 1000)} seconds)`
         : ''

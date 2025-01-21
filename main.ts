@@ -34,8 +34,12 @@ app.use(async (ctx, next) => {
 });
 
 app.use(async (_ctx, next) => {
-  console.log(`${_ctx.request.method} ${_ctx.request.url}`);
+  const st = Date.now();
   await next();
+  const ms = Date.now() - st;
+  const url = new URL(_ctx.request.url);
+  const statusCode = _ctx.response.status;
+  console.log(`${_ctx.request.method} - ${url.pathname} - ${statusCode} - ${ms}ms`);
 });
 
 app.use(stateMiddleware);

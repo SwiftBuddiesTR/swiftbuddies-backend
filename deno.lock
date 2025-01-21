@@ -16,9 +16,11 @@
     "jsr:@std/path@1": "1.0.8",
     "npm:@google-cloud/storage@*": "7.15.0",
     "npm:@types/node@*": "22.5.4",
+    "npm:chalk@^5.4.1": "5.4.1",
     "npm:mongoose@*": "8.9.5",
     "npm:path-to-regexp@^6.3.0": "6.3.0",
-    "npm:uuid@*": "11.0.5"
+    "npm:uuid@*": "11.0.5",
+    "npm:vt@~0.1.1": "0.1.1"
   },
   "jsr": {
     "@lucsoft/web-bson@0.3.1": {
@@ -183,6 +185,9 @@
     },
     "buffer-equal-constant-time@1.0.1": {
       "integrity": "sha512-zRpUiDwd/xk6ADqPMATG8vc9VPrkck7T07OIx0gnjmJAnHnTVXNQG3vfvWNuiZIkwu9KrKdA1iJKfsfTVxE6NA=="
+    },
+    "chalk@5.4.1": {
+      "integrity": "sha512-zgVZuo2WcZgfUEmsn6eO3kINexW8RAE4maiQ8QNs8CtpPCSyMiYsULR3HQYkm3w8FIA3SberyMJMSldGsW+U3w=="
     },
     "combined-stream@1.0.8": {
       "integrity": "sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==",
@@ -494,6 +499,9 @@
     },
     "uuid@9.0.1": {
       "integrity": "sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA=="
+    },
+    "vt@0.1.1": {
+      "integrity": "sha512-P0lgjQ7GDGo4KKsa1t3CE3t5Cs2EWqBYC6KY3fASin+7ZPSUt3BC0wxBiYrbghovYyMDS4ynhfmbhWlaag0PMQ=="
     },
     "webidl-conversions@3.0.1": {
       "integrity": "sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ=="
@@ -888,6 +896,12 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@1"
-    ]
+    ],
+    "packageJson": {
+      "dependencies": [
+        "npm:chalk@^5.4.1",
+        "npm:vt@~0.1.1"
+      ]
+    }
   }
 }

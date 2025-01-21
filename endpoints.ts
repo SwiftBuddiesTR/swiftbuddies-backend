@@ -1,13 +1,9 @@
-import { walk } from 'https://deno.land/std@0.170.0/fs/walk.ts';
+// deno-lint-ignore-file no-explicit-any
 import { Context } from 'https://deno.land/x/oak@v17.1.4/mod.ts';
 
-
 // All endpoint file paths should be written here
-const paths = [
-  './api/Users/whoAmI.ts',
-]
+const endpointExports = [await import('./api/Users/whoAmI.ts')];
 
-// deno-lint-ignore no-explicit-any
 export type ctx = Context<Record<string, any>, Record<string, any>>;
 
 type AllMethods =
@@ -37,22 +33,28 @@ const endpoints: Array<{
  * { pattern: new URLPattern({ pathname: "/api/whoAmI" }), handler: handler }
  * IF MATCH -> handler(req)
  */
-for (const path of paths) {
-
-  let pattern, GET, POST, PUT, DELETE, PATCH;
+for (const _export of endpointExports) {
+  let pattern: URLPattern | null = null;
+  let GET: ((ctx: ctx) => Response | Promise<Response>) | null = null;
+  let POST: ((ctx: ctx) => Response | Promise<Response>) | null = null;
+  let PUT: ((ctx: ctx) => Response | Promise<Response>) | null = null;
+  let DELETE: ((ctx: ctx) => Response | Promise<Response>) | null = null;
+  let PATCH: ((ctx: ctx) => Response | Promise<Response>) | null = null;
   try {
-      ({ pattern, GET, POST, PUT, DELETE, PATCH } = await import(path));
+    pattern = _export.pattern;
+    GET = (_export as any).GET ? (_export as any).GET : null;
+    POST = (_export as any).POST ? (_export as any).POST : null;
+    PUT = (_export as any).PUT ? (_export as any).PUT : null;
+    DELETE = (_export as any).DELETE ? (_export as any).DELETE : null;
+    PATCH = (_export as any).PATCH ? (_export as any).PATCH : null;
   } catch (error) {
-    console.error(
-      `Failed to import ${path}`,
-      error
-    );
+    console.error(`Failed to import `, _export, error);
     continue;
   }
   const method: AllMethods | '' = '';
   const availableMethods: Array<AllMethods> = [];
   const methods: {
-    [key in AllMethods]?: (ctx: ctx) => Response | Promise<Response>;
+    [key in AllMethods]?: (((ctx: ctx) => Response | Promise<Response>) | null);
   } = { GET, POST, PUT, DELETE, PATCH };
   for (const [method, handler] of Object.entries(methods) as [
     AllMethods,

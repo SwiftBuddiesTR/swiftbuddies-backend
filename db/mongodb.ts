@@ -16,11 +16,13 @@ if (!MONGODB_URL && typeof MONGODB_URL !== 'string') {
 }
 
 let client: mongoose.Mongoose | null = null;
+let startTime: number | null = null;
 let state = 'not-started';
 
 async function connect() {
   state = 'connecting';
   console.log('Connecting to MongoDB...');
+  startTime = Date.now();
   client = await mongoose.connect((MONGODB_URL as string) || '');
 
   if (!client) {
@@ -41,7 +43,7 @@ const stateMiddleware: Middleware = (ctx, next) => {
       status: 500,
     },
     connecting: {
-      body: 'Database connection in progress',
+      body: `Database connection in progress ${startTime ? `${Math.floor((Date.now() - startTime) / 1000)} seconds passed)` : ''}`,
       status: 500,
     },
     failed: {

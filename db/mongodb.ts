@@ -43,7 +43,7 @@ const stateMiddleware: Middleware = (ctx, next) => {
       status: 500,
     },
     connecting: {
-      body: `Database connection in progress ${startTime ? `${Math.floor((Date.now() - startTime) / 1000)} seconds passed)` : ''}`,
+      body: `Database connection in progress ${startTime ? `(${Math.floor((Date.now() - startTime) / 1000)} seconds passed)` : ''}`,
       status: 500,
     },
     failed: {

@@ -35,6 +35,8 @@ async function connect() {
     state = 'failed';
     stop();
     console.error('✗ MongoDB connection error', err);
+    console.log('Retrying in 5 seconds...');
+    setTimeout(connect, 5000);
     return;
   }
 

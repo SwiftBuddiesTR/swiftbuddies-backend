@@ -51,7 +51,8 @@ app.use(async (_ctx) => {
       _ctx.request.method === endpoint.method
     ) {
       const middlewareDatas = [];
-      for (const middleware of endpoint.middlewares || []) {
+      const middlewares = ['dataValidation', ...(endpoint.middlewares || [])];
+      for (const middleware of middlewares) {
         const middlewareData = await applyMiddleware({ ctx: _ctx, middleware, endpoint });
 
         if (middlewareData.base.responseStatus === 'end') {

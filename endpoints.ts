@@ -3,7 +3,7 @@ import { Context } from 'https://deno.land/x/oak@v17.1.4/mod.ts';
 import { z } from 'npm:zod';
 
 async function loadEndpoints() {
-  return [await import('./api/Users/whoAmI.ts')];
+  return [await import("@api/Users/whoAmI.ts")];
 }
 
 export type ctx = Context<Record<string, any>, Record<string, any>>;

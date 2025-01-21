@@ -23,7 +23,7 @@ async function connect() {
   state = 'connecting';
   console.log('Connecting to MongoDB...');
   startTime = Date.now();
-  client = await mongoose.connect((MONGODB_URL as string) || '');
+  client = await mongoose.connect((MONGODB_URL as string) || '', { family: 4 });
 
   if (!client) {
     state = 'failed';
@@ -31,7 +31,13 @@ async function connect() {
   }
 
   state = 'connected';
-  console.log('MongoDB connected');
+  console.log(
+    `MongoDB connected ${
+      startTime
+        ? `(took ${Math.floor((Date.now() - startTime) / 1000)} seconds)`
+        : ''
+    }`
+  );
 }
 
 type DBState = 'not-started' | 'connecting' | 'failed' | 'connected';
@@ -43,7 +49,11 @@ const stateMiddleware: Middleware = (ctx, next) => {
       status: 500,
     },
     connecting: {
-      body: `Database connection in progress ${startTime ? `(${Math.floor((Date.now() - startTime) / 1000)} seconds passed)` : ''}`,
+      body: `Database connection in progress ${
+        startTime
+          ? `(${Math.floor((Date.now() - startTime) / 1000)} seconds passed)`
+          : ''
+      }`,
       status: 500,
     },
     failed: {

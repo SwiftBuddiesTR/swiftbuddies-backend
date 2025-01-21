@@ -1,6 +1,6 @@
 import mongoose, { Document, Model } from 'npm:mongoose';
 
-interface IUser extends Document {
+export interface IUser extends Document {
   registerType: string;
   registerDate: Date;
   lastLoginDate: Date;
@@ -11,6 +11,11 @@ interface IUser extends Document {
   picture?: string;
   socialMedias: { key: string; value: string }[];
   token: string;
+}
+
+export interface OptionalIUser extends Partial<IUser> {
+  // deno-lint-ignore no-explicit-any
+  [key: string]: any;
 }
 
 const userSchema = new mongoose.Schema<IUser>({
@@ -63,7 +68,8 @@ const userSchema = new mongoose.Schema<IUser>({
   },
 });
 
-const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', userSchema);
+const User: Model<IUser> =
+  mongoose.models.User || mongoose.model<IUser>('User', userSchema);
 
 /**
  * Check if a user is already registered by email

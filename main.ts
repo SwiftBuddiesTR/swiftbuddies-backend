@@ -4,6 +4,7 @@ import {
   Application,
   isHttpError,
 } from 'https://deno.land/x/oak@v17.1.4/mod.ts';
+import { applyMiddleware } from '@/middlewares/applyMiddleware.ts';
 
 // async, so we can wait for the connection to be established
 connect();
@@ -39,13 +40,31 @@ app.use(async (_ctx, next) => {
 
 app.use(stateMiddleware);
 
-app.use((_ctx) => {
+app.use(async (_ctx) => {
   for (const { endpoint, handler } of endpoints) {
     if (
       endpoint.pattern.test(_ctx.request.url) &&
       _ctx.request.method === endpoint.method
     ) {
-      return handler(_ctx);
+      const middlewareDatas = [];
+      for (const middleware of endpoint.middlewares || []) {
+        const middlewareData = await applyMiddleware({ ctx: _ctx, middleware, endpoint });
+
+        if (middlewareData.base.responseStatus === 'end') {
+          _ctx.response.status = middlewareData.base.status ? middlewareData.base.status : 500;
+          _ctx.response.body = middlewareData.base.body ? middlewareData.base.body : 'Internal Server Error';
+          _ctx.response.headers = middlewareData.base.headers ? middlewareData.base.headers : _ctx.response.headers;
+          _ctx.response.type = middlewareData.base.type ? middlewareData.base.type : 'json';
+          return;
+        }
+
+        middlewareDatas.push({
+          middleware: middleware,
+          base: {},
+          user: middlewareData.user,
+        });
+      }
+      return handler(_ctx, middlewareDatas);
     }
   }
   _ctx.response.status = 501;

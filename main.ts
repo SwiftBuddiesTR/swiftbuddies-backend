@@ -6,6 +6,10 @@ import { H } from 'hono/types';
 import { Middleware as auth_validToken } from '@/middlewares/auth/validToken.ts';
 import { endTrace, initTrace, printTrace, startTrace } from '@/lib/requestTracer.ts';
 import { setMiddleware } from '@/lib/requestTracer.ts';
+import { config } from 'https://deno.land/x/dotenv@v3.2.2/mod.ts';
+import * as Sentry from 'npm:@sentry/node';
+
+config({ export: true, path: '.env.local' });
 
 async function main() {
   const endpoints = await getEndpoints();
@@ -15,6 +19,19 @@ async function main() {
 
   const app = new Hono();
   const v1 = new Hono();
+
+  Sentry.init({
+    dsn: Deno.env.get('SENTRY_DSN'),
+    tracesSampleRate: 1.0,
+    tracePropagationTargets: ["localhost", /^https:\/\/swiftbuddies.deno\.dev\/api/],
+  });  
+  
+  v1.onError(async (err: Error, c) => {
+    console.error(err);
+    Sentry.captureException(err);
+    c.status(500);
+    return await c.json({ error: 'Internal server error' });
+  });
 
   v1.use(async (c: Ctx, next) => {
     initTrace(c);

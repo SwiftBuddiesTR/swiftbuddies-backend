@@ -1,12 +1,8 @@
 import mongoose from 'npm:mongoose';
-import { config } from 'https://deno.land/x/dotenv@v3.2.2/mod.ts';
-import process from 'node:process';
 import { loop } from '@/lib/loop.ts';
 import { Ctx } from '@/endpoints.ts';
 import { type StatusCode } from 'npm:hono/utils/http-status';
 import { endTrace, startTrace } from "@/lib/requestTracer.ts";
-
-config({ export: true, path: '.env.local' });
 
 const MONGODB_URL = Deno.env.get('MONGODB_URL');
 

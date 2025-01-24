@@ -1,4 +1,6 @@
 import mongoose, { Document, Model } from 'npm:mongoose';
+import { Ctx } from '@/endpoints.ts';
+import { addBulletToLastTrace } from '@/lib/requestTracer.ts';
 
 export interface IUser extends Document {
   registerType: string;
@@ -96,9 +98,44 @@ const getUserIdByToken = async (token: string): Promise<string | null> => {
  * @param {string} uid - The user ID to check
  * @returns {Promise<IUser | null>} - The user object or null if not found
  */
-const getUserById = async (uid: string): Promise<IUser | null> => {
+const getUserById = async (
+  ctx: Ctx | null,
+  uid: string
+): Promise<IUser | null> => {
+  const startMS = Date.now();
   const user = await User.findOne({ uid });
+  const duration = Date.now() - startMS;
+  if (ctx) {
+    addBulletToLastTrace(
+      ctx,
+      `db_query:findUserByUserID - duration: ${duration}ms`
+    );
+  }
   return user;
 };
 
-export { User, isUserRegistered, getUserIdByToken, getUserById };
+const getUserByToken = async (
+  ctx: Ctx | null,
+  token: string
+): Promise<IUser | null> => {
+  const startMS = Date.now();
+  const user = await User.findOne({
+    token,
+  });
+  const duration = Date.now() - startMS;
+  if (ctx) {
+    addBulletToLastTrace(
+      ctx,
+      `db_query:findUserByToken - duration: ${duration}ms`
+    );
+  }
+  return user;
+};
+
+export {
+  User,
+  isUserRegistered,
+  getUserIdByToken,
+  getUserById,
+  getUserByToken,
+};

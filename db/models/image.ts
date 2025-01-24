@@ -1,5 +1,6 @@
 import mongoose, { Document, Model } from 'npm:mongoose';
 
+
 interface IImage extends Document {
   uid: string;
   owner_uid: string;

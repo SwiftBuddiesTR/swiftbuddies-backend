@@ -1,8 +1,10 @@
 import mongoose from 'npm:mongoose';
 import { config } from 'https://deno.land/x/dotenv@v3.2.2/mod.ts';
-import { Middleware } from 'https://deno.land/x/oak@v17.1.4/middleware.ts';
-import process from "node:process";
-import { loop } from "@/lib/loop.ts";
+import process from 'node:process';
+import { loop } from '@/lib/loop.ts';
+import { Ctx } from '@/endpoints.ts';
+import { type StatusCode } from 'npm:hono/utils/http-status';
+import { endTrace, startTrace } from "@/lib/requestTracer.ts";
 
 config({ export: true, path: '.env.local' });
 
@@ -26,11 +28,13 @@ async function connect() {
 
   state = 'connecting';
   // console.log('Connecting to MongoDB...');
-  startTime = Date.now();
+  if (!startTime) {
+    startTime = Date.now();
+  }
   client;
 
   try {
-    client = await mongoose.connect((MONGODB_URL as string) || '')
+    client = await mongoose.connect((MONGODB_URL as string) || '');
   } catch (err) {
     state = 'failed';
     stop();
@@ -59,7 +63,8 @@ async function connect() {
 
 type DBState = 'not-started' | 'connecting' | 'failed' | 'connected';
 
-const stateMiddleware: Middleware = (ctx, next) => {
+const dbStateMiddleware = async (ctx: Ctx, next: () => void) => {
+  startTrace(ctx, 'Database state middleware');
   const DB_Responses: Record<DBState, { body: string; status: number }> = {
     'not-started': {
       body: 'Database connection not started',
@@ -84,12 +89,13 @@ const stateMiddleware: Middleware = (ctx, next) => {
   };
 
   if (state !== 'connected') {
-    ctx.response.status = DB_Responses[state as DBState].status;
-    ctx.response.body = DB_Responses[state as DBState].body;
-    return;
+    ctx.status(DB_Responses[state as DBState].status as StatusCode);
+    endTrace(ctx, 'Database state middleware');
+    return await ctx.body(DB_Responses[state as DBState].body);;
   }
 
-  return next();
+  endTrace(ctx, 'Database state middleware');
+  return await next();
 };
 
-export { client as default, connect, stateMiddleware };
+export { client as default, connect, dbStateMiddleware };

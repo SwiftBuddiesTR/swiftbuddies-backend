@@ -1,36 +1,10 @@
 import {
-  type ctx,
-  type MiddlewareDataArray,
-  getDataFromMiddleware,
-  SetResponse,
-  ValidationType
+  type Ctx,
 } from '@/endpoints.ts';
 import { IUser, OptionalIUser } from '@/db/models/Users.ts';
-import {z} from 'npm:zod';
 
-
-
-export const pattern = new URLPattern({ pathname: '/api/whoAmI' });
-export const validation: ValidationType = {
-  // /api/whoAmI?test=anystring
-  query: {
-    test: z.string().min(4),
-  },
-
-  // /api/whoAmI
-  // {
-  //   test: 'anystring'
-  // }
-  body: z.object({
-    test: z.string().optional(),
-  }),
-}
-export const middlewares = [
-  'auth:validToken',
-];
-
-export function GET(ctx: ctx, _middlewareDatas: MiddlewareDataArray): void {
-  const data = getDataFromMiddleware(_middlewareDatas, 'auth:validToken');
+export function GET(ctx: Ctx) {
+  const data = ctx.get('auth:validToken').user;
   const user = data.user as IUser;
 
   const userData: OptionalIUser = {
@@ -41,14 +15,18 @@ export function GET(ctx: ctx, _middlewareDatas: MiddlewareDataArray): void {
     name: user.name,
     username: user.username,
     picture: user.picture,
+    ...user.socialMedias?.reduce(
+      (
+        acc: Record<string, string>,
+        { key, value }: { key: string; value: string }
+      ) => ({ ...acc, [key]: value }),
+      {}
+    ),
   };
 
-  user.socialMedias?.forEach((socialMedia) => {
-    userData[socialMedia.key] = socialMedia.value;
-  });
-
-  return SetResponse(ctx, {
-    status: 200,
-    body: userData,
-  });
+  ctx.status(200);
+  return ctx.json(userData);
 }
+
+export const path = '/api/whoAmI';
+export const middlewares = ['auth:validToken'];

@@ -2,6 +2,7 @@
 
 # vscode
 /.vscode
+dev.md
 
 # dependencies
 /node_modules

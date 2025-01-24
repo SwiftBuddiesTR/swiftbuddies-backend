@@ -1,52 +1,33 @@
-import { type ApplyMiddlewareParams } from '@/middlewares/applyMiddleware.ts';
-import { User } from '@/db/models/Users.ts';
+import { getUserByToken } from '@/db/models/Users.ts';
+import { Ctx } from '@/endpoints.ts';
+import { bearerAuth } from 'hono/bearer-auth';
+import { endTrace, startTrace } from "@/lib/requestTracer.ts";
 
-// Bearer af9aiasd-avlds22 -> af9aiasd-avlds22
-function parseBearer(token: string) {
-  if (!token) {
-    return null;
-  }
+const Middleware = bearerAuth({
+  verifyToken: async (token: string, c: Ctx) => {
+    startTrace(c, 'auth:validToken');
+    if (!token) {
+      endTrace(c, 'auth:validToken');
+      return false;
+    }
 
-  if (token.split(' ')[0] === 'Bearer') {
-    return token.split(' ')[1] || null;
-  }
-  return token.split(' ')[0] || null;
-}
+    const user = await getUserByToken(c, token);
+    if (!user) {
+      endTrace(c, 'auth:validToken');
+      return false;
+    }
 
-async function Middleware(request: ApplyMiddlewareParams) {
-  let token = request.ctx.request.headers.get('Authorization');
-  if (!token) {
-    return {
-      base: {
-        responseStatus: 'end',
-        status: 401,
-        body: JSON.stringify({ message: 'Unauthorized.' }),
+    c.set('auth:validToken', {
+      base: {},
+      user: {
+        token,
+        user,
       },
-      user: null,
-    };
-  }
+    });
 
-  token = parseBearer(token);
-
-  const user = await User.findOne({ token });
-  if (!user) {
-    return {
-      base: {
-        responseStatus: 'end',
-        status: 404,
-        body: JSON.stringify({ message: 'User not found.' }),
-      },
-      user: null,
-    };
-  }
-
-  return {
-    base: {},
-    user: {
-      token,
-      user,
-    },
-  };
-}
+    endTrace(c, 'auth:validToken');
+    return true;
+  },
+});
 
 export { Middleware };

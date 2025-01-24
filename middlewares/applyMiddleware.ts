@@ -1,13 +1,12 @@
 // deno-lint-ignore-file no-explicit-any
-import { Middleware as auth_validToken } from '@/middlewares/auth/validToken.ts';
 import { Middleware as data_validation } from '@/middlewares/data/requestValidation.ts';
-import { ctx, ValidationType } from '@/endpoints.ts';
+import { Ctx, ValidationType } from '@/endpoints.ts';
 
 type ApplyMiddlewareParams = {
-  ctx: ctx;
+  ctx: Ctx;
   middleware: string;
   endpoint?: {
-    pattern: URLPattern;
+    path: string;
     middlewares: string[] | undefined;
     validation?: ValidationType;
     method:
@@ -25,9 +24,8 @@ type ApplyMiddlewareParams = {
 
 const validMiddlewares: Record<
   string,
-  (request: ApplyMiddlewareParams) => any
+  (request: ApplyMiddlewareParams) => Promise<any>
 > = {
-  'auth:validToken': auth_validToken,
   'dataValidation': data_validation,
 };
 

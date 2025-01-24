@@ -1,12 +1,15 @@
 // deno-lint-ignore-file no-explicit-any
-import { Context } from 'https://deno.land/x/oak@v17.1.4/mod.ts';
 import { z } from 'npm:zod';
+import { Context } from "hono";
 
 async function loadEndpoints() {
-  return [await import('./api/Users/whoAmI.ts')];
+  return [
+    await import('./api/Users/whoAmI.ts'),
+    await import('./api/Users/getUserInfo.ts'),
+  ];
 }
 
-export type ctx = Context<Record<string, any>, Record<string, any>>;
+export type Ctx = Context<any>;
 
 type AllMethods =
   | 'GET'
@@ -26,16 +29,18 @@ type MiddlewareDataArray = Array<{
 }>;
 
 type ValidationType = {
-  query: {
-    [key: string]: z.ZodType<any, any, any> | undefined;
-  };
-  body: z.infer<any> | undefined;
+  query:
+    | {
+        [key: string]: z.ZodType<any, any, any> | string | undefined;
+      }
+    | undefined;
+  body?: z.infer<any> | undefined;
 };
 
 function getDataFromMiddleware(
   middlewareDatas: MiddlewareDataArray,
   middleware: string
-): { isFound: boolean; user: any } {
+): { isFound: boolean; [key: string]: any } {
   const middlewareData = middlewareDatas.find(
     (data) => data.middleware === middleware
   );
@@ -58,37 +63,42 @@ type SetResponseParams = {
   type?: 'json' | 'text' | 'html' | 'xml' | 'form' | 'multipart' | 'octet';
 };
 
-function SetResponse(ctx: ctx, responseParams = {} as SetResponseParams) {
-  if (!responseParams.headers) {
-    responseParams.headers = new Headers();
-  }
-  if (responseParams.type === 'json') {
-    responseParams.headers.set('Content-Type', 'application/json');
-    ctx.response.body =
-      typeof responseParams.body === 'string'
-        ? responseParams.body
-        : JSON.stringify(responseParams.body);
-  } else {
-    ctx.response.body = responseParams.body;
-  }
-  ctx.response.status = responseParams.status
-    ? responseParams.status
-    : ctx.response.status;
-  ctx.response.headers = responseParams.headers
-    ? responseParams.headers
-    : ctx.response.headers;
-  ctx.response.type = responseParams.type;
-}
+// function SetResponse(ctx: Ctx, responseParams = {} as SetResponseParams) {
+//   console.log('responseParams', responseParams);
+//   if (ctx.response.writable) {
+//     if (!responseParams.headers) {
+//       responseParams.headers = new Headers();
+//     }
+//     if (responseParams.type === 'json' || typeof responseParams.body === 'object') {
+//       responseParams.headers.set('Content-Type', 'application/json');
+//       ctx.response.body =
+//         typeof responseParams.body === 'string'
+//           ? responseParams.body
+//           : JSON.stringify(responseParams.body || {});
+//     } else {
+//       ctx.response.body = responseParams.body;
+//     }
+//     ctx.response.status = responseParams.status
+//       ? responseParams.status
+//       : ctx.response.status;
+//     ctx.response.headers = responseParams.headers
+//       ? responseParams.headers
+//       : ctx.response.headers;
+//     ctx.response.type = responseParams.type;
+//   } else {
+//     console.error('The response is not writable.');
+//   }
+// }
 
 const endpoints: Array<{
   endpoint: {
-    pattern: URLPattern;
+    path: string;
     middlewares: string[] | undefined;
     validation: ValidationType;
     method: AllMethods;
   };
   handler: (
-    ctx: ctx,
+    ctx: Ctx,
     middlewareDatas: MiddlewareDataArray
   ) => Response | Promise<Response>;
 }> = [];
@@ -97,16 +107,16 @@ async function initializeEndpoints() {
   const endpointExports = await loadEndpoints();
 
   for (const _export of endpointExports) {
-    let pattern: URLPattern | null = null;
+    let path: string | null = null;
     let middlewares: string[] | undefined = [];
     let validation: ValidationType = { query: {}, body: undefined };
-    let GET: ((ctx: ctx) => Response | Promise<Response>) | null = null;
-    let POST: ((ctx: ctx) => Response | Promise<Response>) | null = null;
-    let PUT: ((ctx: ctx) => Response | Promise<Response>) | null = null;
-    let DELETE: ((ctx: ctx) => Response | Promise<Response>) | null = null;
-    let PATCH: ((ctx: ctx) => Response | Promise<Response>) | null = null;
+    let GET: ((ctx: Ctx) => Response | Promise<Response>) | null = null;
+    let POST: ((ctx: Ctx) => Response | Promise<Response>) | null = null;
+    let PUT: ((ctx: Ctx) => Response | Promise<Response>) | null = null;
+    let DELETE: ((ctx: Ctx) => Response | Promise<Response>) | null = null;
+    let PATCH: ((ctx: Ctx) => Response | Promise<Response>) | null = null;
     try {
-      pattern = _export.pattern;
+      path = _export.path;
       middlewares = (_export as any).middlewares;
       validation = (_export as any).validation;
       GET = (_export as any).GET ? (_export as any).GET : null;
@@ -121,17 +131,17 @@ async function initializeEndpoints() {
     const method: AllMethods | '' = '';
     const availableMethods: Array<AllMethods> = [];
     const methods: {
-      [key in AllMethods]?: ((ctx: ctx) => Response | Promise<Response>) | null;
+      [key in AllMethods]?: ((ctx: Ctx) => Response | Promise<Response>) | null;
     } = { GET, POST, PUT, DELETE, PATCH };
     for (const [method, handler] of Object.entries(methods) as [
       AllMethods,
-      (ctx: ctx) => Response | Promise<Response>
+      (ctx: Ctx) => Response | Promise<Response>
     ][]) {
       if (typeof handler === 'function') {
         availableMethods.push(method);
         endpoints.push({
           endpoint: {
-            pattern,
+            path,
             middlewares,
             validation,
             method,
@@ -143,16 +153,15 @@ async function initializeEndpoints() {
 
     endpoints.push({
       endpoint: {
-        pattern,
+        path,
         middlewares: [],
         validation,
         method: 'OPTIONS',
       },
-      handler: (ctx) => {
-        ctx.response.headers.set('Allow', availableMethods.join(', '));
-        ctx.response.body = "Look header's Allow property :)";
-        ctx.response.status = 200;
-        return new Response(null, { status: 200 });
+      handler: async (ctx: Ctx) => {
+        await ctx.res.headers.append('Allow', availableMethods.join(', '));
+        await ctx.status(200);
+        return await ctx.text("Look header's Allow property :)");
       },
     });
     if (!method) {
@@ -161,12 +170,15 @@ async function initializeEndpoints() {
   }
 }
 
-initializeEndpoints();
+
+async function getEndpoints() {
+  await initializeEndpoints();
+  return endpoints;
+}
 
 export {
-  endpoints,
   type MiddlewareDataArray,
   getDataFromMiddleware,
-  SetResponse,
   type ValidationType,
+  getEndpoints
 };

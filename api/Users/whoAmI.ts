@@ -34,7 +34,7 @@ export const path = '/api/whoAmI';
 export const middlewares = ['auth:validToken'];
 export const openAPI: OpenAPIDoc = {
   description: 'Get yourself user information',
-  tags: ['Users'],
+  tags: ['User'],
   responses: {
     200: {
       type: 'application/json',

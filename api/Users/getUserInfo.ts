@@ -54,7 +54,7 @@ type QueryType = z.infer<typeof querySchema>;
 
 export const openAPI: OpenAPIDoc = {
   description: 'Get the user information',
-  tags: ['Users'],
+  tags: ['User'],
   responses: {
     200: {
       type: 'application/json',

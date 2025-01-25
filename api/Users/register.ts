@@ -122,7 +122,7 @@ export const validation: ValidationType = {
 type BodyType = z.infer<typeof validation.body>;
 
 export const openAPI: OpenAPIDoc = {
-  description: 'Register the user',
+  description: 'Register the user, Bearer token will be returned so don\'t need to send Authorization header.',
   tags: ['User'],
   responses: {
     200: {

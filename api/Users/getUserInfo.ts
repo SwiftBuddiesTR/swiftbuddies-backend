@@ -5,6 +5,7 @@ import {
 import { z } from 'npm:zod';
 import { shouldBeUserId } from '@/lib/userIdCheck.ts';
 import { OptionalIUser } from '@/db/models/Users.ts';
+import { OpenAPIDoc } from "@/lib/openAPI.types.ts";
 
 /**
  * GET /api/getUserInfo
@@ -50,3 +51,25 @@ export const middlewares = ['auth:validToken'];
 
 const querySchema = z.object(validation.query as z.ZodRawShape);
 type QueryType = z.infer<typeof querySchema>;
+export const openAPI: OpenAPIDoc = {
+  description: 'Get the user information',
+  tags: ['Users'],
+  responses: {
+    200: {
+      type: 'application/json',
+      zodSchema: z.object({
+        registerType: z.string(),
+        registerDate: z.string(),
+        lastLoginDate: z.string(),
+        email: z.string(),
+        name: z.string(),
+        username: z.string(),
+        picture: z.string(),
+        socialMedias: z.array(z.object({
+          key: z.string(),
+          value: z.string(),
+        })),
+      }),
+    },
+  },
+}

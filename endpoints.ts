@@ -1,6 +1,10 @@
 // deno-lint-ignore-file no-explicit-any
 import { z } from 'npm:zod';
-import { Context } from "hono";
+import { Context, MiddlewareHandler } from 'hono';
+import { describeRoute, DescribeRouteOptions } from 'npm:hono-openapi';
+import * as v from 'npm:valibot';
+import { createRoute } from 'npm:@hono/zod-openapi';
+import { OpenAPIDoc } from '@/lib/openAPI.types.ts';
 
 async function loadEndpoints() {
   return [
@@ -56,46 +60,13 @@ function getDataFromMiddleware(
   };
 }
 
-type SetResponseParams = {
-  status?: number;
-  body?: any;
-  headers?: Headers;
-  type?: 'json' | 'text' | 'html' | 'xml' | 'form' | 'multipart' | 'octet';
-};
-
-// function SetResponse(ctx: Ctx, responseParams = {} as SetResponseParams) {
-//   console.log('responseParams', responseParams);
-//   if (ctx.response.writable) {
-//     if (!responseParams.headers) {
-//       responseParams.headers = new Headers();
-//     }
-//     if (responseParams.type === 'json' || typeof responseParams.body === 'object') {
-//       responseParams.headers.set('Content-Type', 'application/json');
-//       ctx.response.body =
-//         typeof responseParams.body === 'string'
-//           ? responseParams.body
-//           : JSON.stringify(responseParams.body || {});
-//     } else {
-//       ctx.response.body = responseParams.body;
-//     }
-//     ctx.response.status = responseParams.status
-//       ? responseParams.status
-//       : ctx.response.status;
-//     ctx.response.headers = responseParams.headers
-//       ? responseParams.headers
-//       : ctx.response.headers;
-//     ctx.response.type = responseParams.type;
-//   } else {
-//     console.error('The response is not writable.');
-//   }
-// }
-
 const endpoints: Array<{
   endpoint: {
     path: string;
     middlewares: string[] | undefined;
     validation: ValidationType;
     method: AllMethods;
+    openAPI: OpenAPIDoc | null;
   };
   handler: (
     ctx: Ctx,
@@ -110,6 +81,7 @@ async function initializeEndpoints() {
     let path: string | null = null;
     let middlewares: string[] | undefined = [];
     let validation: ValidationType = { query: {}, body: undefined };
+    let openAPI: OpenAPIDoc | null = null;
     let GET: ((ctx: Ctx) => Response | Promise<Response>) | null = null;
     let POST: ((ctx: Ctx) => Response | Promise<Response>) | null = null;
     let PUT: ((ctx: Ctx) => Response | Promise<Response>) | null = null;
@@ -119,6 +91,7 @@ async function initializeEndpoints() {
       path = _export.path;
       middlewares = (_export as any).middlewares;
       validation = (_export as any).validation;
+      openAPI = (_export as any).openAPI ? (_export as any).openAPI : null;
       GET = (_export as any).GET ? (_export as any).GET : null;
       POST = (_export as any).POST ? (_export as any).POST : null;
       PUT = (_export as any).PUT ? (_export as any).PUT : null;
@@ -141,6 +114,7 @@ async function initializeEndpoints() {
         availableMethods.push(method);
         endpoints.push({
           endpoint: {
+            openAPI,
             path,
             middlewares,
             validation,
@@ -153,6 +127,16 @@ async function initializeEndpoints() {
 
     endpoints.push({
       endpoint: {
+        openAPI: {
+          description: `Get the available methods for this endpoint`,
+          tags: openAPI?.tags,
+          responses: {
+            '200': {
+              type: 'plain/text',
+              zodSchema: z.string(),
+            },
+          },
+        },
         path,
         middlewares: [],
         validation,
@@ -170,7 +154,6 @@ async function initializeEndpoints() {
   }
 }
 
-
 async function getEndpoints() {
   await initializeEndpoints();
   return endpoints;
@@ -180,5 +163,5 @@ export {
   type MiddlewareDataArray,
   getDataFromMiddleware,
   type ValidationType,
-  getEndpoints
+  getEndpoints,
 };

@@ -4,10 +4,27 @@ import { applyMiddleware } from '@/middlewares/applyMiddleware.ts';
 import { Hono } from 'hono';
 import { H } from 'hono/types';
 import { Middleware as auth_validToken } from '@/middlewares/auth/validToken.ts';
-import { endTrace, initTrace, printTrace, startTrace } from '@/lib/requestTracer.ts';
+import {
+  endTrace,
+  initTrace,
+  printTrace,
+  startTrace,
+} from '@/lib/requestTracer.ts';
 import { setMiddleware } from '@/lib/requestTracer.ts';
 import { config } from 'https://deno.land/x/dotenv@v3.2.2/mod.ts';
 import * as Sentry from 'npm:@sentry/node';
+import { OpenAPIHono, createRoute } from 'npm:@hono/zod-openapi';
+import { apiReference } from 'npm:@scalar/hono-api-reference';
+import * as v from 'npm:valibot';
+import { describeRoute } from 'npm:hono-openapi';
+import { vValidator } from 'npm:@hono/valibot-validator';
+import { openAPISpecs } from 'npm:hono-openapi';
+import { addOpenAPIEndpoint, initOpenAPI, openAPI } from '@/lib/openAPI.ts';
+import { z } from 'npm:zod@^3.24.1';
+import {
+  OpenAPIMethods,
+  type AddOpenAPIEndpointParams,
+} from '@/lib/openAPI.types.ts';
 
 config({ export: true, path: '.env.local' });
 
@@ -17,48 +34,127 @@ async function main() {
   // async, so we can wait for the connection to be established
   connect();
 
-  const app = new Hono();
-  const v1 = new Hono();
+  const app = new OpenAPIHono();
+  // const v1 = new OpenAPIHono();
+
+  // cors
+  app.use(async (c: Ctx, next) => {
+    c.res.headers.set('Access-Control-Allow-Origin', '*');
+    c.res.headers.set(
+      'Access-Control-Allow-Methods',
+      'GET, POST, PUT, DELETE, OPTIONS'
+    );
+    c.res.headers.set(
+      'Access-Control-Allow-Headers',
+      'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+    );
+    await next();
+  });
+
+  initOpenAPI({
+    title: 'SwiftBuddies API',
+    description: 'API for SwiftBuddies',
+    servers: [
+      {
+        url: 'https://swiftbuddies.deno.dev',
+        description: 'Production Server',
+      },
+      { url: 'http://localhost:3000', description: 'Local Server' },
+    ],
+    excludeMethods: ['options'],
+  });
+
+  const querySchema = v.object({
+    name: v.optional(v.string()),
+  });
+
+  const responseSchema = v.string();
+
+  app.get(
+    '/hello',
+    describeRoute({
+      description: 'Say hello to the user',
+      responses: {
+        200: {
+          description: 'Successful response',
+          content: {
+            'text/plain': { schema: resolver(responseSchema) },
+          },
+        },
+      },
+    }),
+    vValidator('query', querySchema),
+    (c) => {
+      const query = c.req.valid('query');
+      return c.text(`Hello ${query?.name ?? 'Hono'}!`);
+    }
+  );
+
+  const helloDocs: AddOpenAPIEndpointParams = {
+    path: '/hello',
+    method: 'get',
+    description: 'Say hello to the user.',
+    inputs: {
+      query: {
+        name: z.string().optional(),
+      },
+      body: v.object({
+        phoneNumber: v.optional(v.string()),
+      }),
+    },
+    responses: {
+      '200': {
+        type: 'plain/text',
+        zodSchema: z.string(),
+      },
+    },
+  };
+
+  addOpenAPIEndpoint(helloDocs);
 
   Sentry.init({
     dsn: Deno.env.get('SENTRY_DSN'),
     tracesSampleRate: 1.0,
-    tracePropagationTargets: ["localhost", /^https:\/\/swiftbuddies.deno\.dev\/api/],
-  });  
-  
-  v1.onError(async (err: Error, c) => {
+    tracePropagationTargets: [
+      'localhost',
+      /^https:\/\/swiftbuddies.deno\.dev\/api/,
+    ],
+  });
+
+  app.onError(async (err: Error, c) => {
     console.error(err);
     Sentry.captureException(err);
     c.status(500);
-    return await c.json({ error: 'Internal server error' });
+    return await c.json({ error: err.message });
   });
 
-  v1.use(async (c: Ctx, next) => {
+  app.use(async (c: Ctx, next) => {
     initTrace(c);
     await next();
     printTrace(c);
   });
 
-  v1.use(async (c: Ctx, next) => {
+  app.use('/api/*', async (c: Ctx, next) => {
     const res = await dbStateMiddleware(c, next);
     return res;
   });
 
   for (const endpoint of endpoints) {
     const handler = endpoint.handler;
-    const { path, middlewares, method, validation } = endpoint.endpoint;
+    const { path, middlewares, method, validation, openAPI } =
+      endpoint.endpoint;
 
     // deno-lint-ignore no-explicit-any
     const options = (path: string, ...handlers: H<any, any, any, any>[]) =>
-      v1.on('OPTIONS', path, ...handlers);
+      app.on('OPTIONS', path, ...handlers);
 
-    type MethodHandler = (path: string, ...handlers: H[]) => Hono;
-    const methods: Record<string, MethodHandler> = {
-      GET: v1.get.bind(v1),
-      POST: v1.post.bind(v1),
-      PUT: v1.put.bind(v1),
-      DELETE: v1.delete.bind(v1),
-      PATCH: v1.patch.bind(v1),
+    // deno-lint-ignore no-explicit-any
+    const methods: Record<string, any> = {
+      GET: app.get.bind(app),
+      POST: app.post.bind(app),
+      PUT: app.put.bind(app),
+      DELETE: app.delete.bind(app),
+      PATCH: app.patch.bind(app),
       OPTIONS: options,
     };
 
@@ -69,41 +165,58 @@ async function main() {
 
     const steps: H[] = [];
 
-    const middlewareList = [...(middlewares ?? []), 'dataValidation'];
+    const apiDoc: AddOpenAPIEndpointParams = {
+      path: path,
+      method: method.toLocaleLowerCase() as OpenAPIMethods,
+      description: openAPI?.description ?? '',
+      inputs: validation,
+      responses: openAPI?.responses ?? {},
+      tags: openAPI?.tags,
+    };
+
+    addOpenAPIEndpoint(apiDoc);
+
+    const middlewareList = [
+      ...(openAPI ? [openAPI] : []),
+      ...(middlewares ?? []),
+      'dataValidation',
+    ];
     for (const middleware of middlewareList) {
       if (middleware === 'auth:validToken') {
         steps.push(auth_validToken);
         continue;
       }
 
-      const middlewareF = setMiddleware(middleware, async (c, next) => {
-        const middlewareData = await applyMiddleware({
-          ctx: c,
-          middleware,
-          endpoint: {
-            path,
-            middlewares,
-            validation,
-            method,
-          },
-        });
-
-        if (middlewareData.base.responseStatus === 'end') {
-          c.status(middlewareData.base.status);
-          const res = c.json(middlewareData.base.body);
-          return res;
-        }
-
-        if (!c.get(middleware)) {
-          c.set(middleware, {
-            middleware: middleware,
-            base: {},
-            user: middlewareData.user,
+      if (typeof middleware === 'string') {
+        const middlewareF = setMiddleware(middleware, async (c, next) => {
+          const middlewareData = await applyMiddleware({
+            ctx: c,
+            middleware,
+            endpoint: {
+              path,
+              middlewares,
+              validation,
+              method,
+            },
           });
-        }
-        await next();
-      });
-      steps.push(middlewareF);
+
+          if (middlewareData.base.responseStatus === 'end') {
+            c.status(middlewareData.base.status);
+            const res = c.json(middlewareData.base.body);
+            return res;
+          }
+
+          if (!c.get(middleware)) {
+            c.set(middleware, {
+              middleware: middleware,
+              base: {},
+              user: middlewareData.user,
+            });
+          }
+          await next();
+        });
+        steps.push(middlewareF);
+      }
     }
 
     methods[method as keyof typeof methods](path, ...steps, async (c: Ctx) => {
@@ -114,9 +227,41 @@ async function main() {
     });
   }
 
-  app.route('/', v1);
+  // app.route('/', app)
+
+  app.get(
+    '/openapi',
+    openAPISpecs(app, {
+      documentation: {
+        info: {
+          title: 'Hono API',
+          version: '1.0.0',
+          description: 'Greeting API',
+        },
+        servers: [
+          { url: 'http://localhost:3000', description: 'Local Server' },
+        ],
+      },
+    })
+  );
+
+  app.get('/opendocs', (c) => {
+    return c.json(openAPI, 200);
+  });
+
+  app.get(
+    '/docs',
+    apiReference({
+      theme: 'saturn',
+      spec: { url: '/opendocs' },
+    })
+  );
 
   await Deno.serve(app.fetch);
 }
 
 await main();
+
+function resolver(responseSchema: v.StringSchema<undefined>) {
+  return responseSchema;
+}

@@ -4,7 +4,7 @@ import { Ctx } from '@/endpoints.ts';
 import { type StatusCode } from 'npm:hono/utils/http-status';
 import { endTrace, startTrace } from "@/lib/requestTracer.ts";
 
-const MONGODB_URL = Deno.env.get('MONGODB_URL');
+let MONGODB_URL = Deno.env.get('MONGODB_URL');
 
 if (!MONGODB_URL && typeof MONGODB_URL !== 'string') {
   console.log(
@@ -27,6 +27,18 @@ async function connect() {
   if (!startTime) {
     startTime = Date.now();
   }
+
+  if (!MONGODB_URL && typeof MONGODB_URL !== 'string') {
+    console.log('MongoDB seems to be not readed from .env.local, retrying...');
+    MONGODB_URL = Deno.env.get('MONGODB_URL');
+    
+    if (!MONGODB_URL && typeof MONGODB_URL !== 'string') {
+      console.log('MongoDB still not readed from .env.local.');
+    } else {
+      console.log('MongoDB readed from .env.local, retrying connect to db right now...');
+    }
+  }
+  
   client;
 
   try {

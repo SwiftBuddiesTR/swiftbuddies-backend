@@ -17,7 +17,14 @@ let openAPI: OpenAPIType = {
   servers: [],
   paths: {},
   components: {
-    schemas: {},
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        description:
+          "Use Bearer Token for authorization. Format: 'Bearer <token>'",
+      },
+    },
   },
 };
 

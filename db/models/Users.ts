@@ -1,6 +1,7 @@
 import mongoose, { Document, Model } from 'npm:mongoose';
 import { Ctx } from '@/endpoints.ts';
 import { addBulletToLastTrace } from '@/lib/requestTracer.ts';
+import { v4 as uuid } from 'npm:uuid';
 
 export interface IUser extends Document {
   registerType: string;
@@ -132,10 +133,62 @@ const getUserByToken = async (
   return user;
 };
 
+type registerParams = {
+  registerType: string;
+  email: string;
+  name: string;
+  picture?: string;
+};
+
+const createNewUserIfNeeded = async (
+  ctx: Ctx | null,
+  user: registerParams
+): Promise<{ token: string; type: string }> => {
+  const startMS = Date.now();
+  const uid = uuid();
+  const token = uuid();
+
+  const userExists = await isUserRegistered(user.email);
+  if (userExists) {
+    userExists.lastLoginDate = new Date();
+    userExists.save();
+    
+    return {
+      token: userExists.token,
+      type: 'existing',
+    };
+  }
+
+  const newUser = new User({
+    registerType: user.registerType,
+    email: user.email,
+    username: uid,
+    lastLoginDate: new Date(),
+    registerDate: new Date(),
+    name: user.name,
+    picture: user.picture,
+    token: token,
+  });
+  await newUser.save();
+  const duration = Date.now() - startMS;
+  if (ctx) {
+    addBulletToLastTrace(
+      ctx,
+      `db_query:createNewUser - duration: ${duration}ms`
+    );
+  }
+  return {
+    token: token,
+    type: 'new',
+  };
+};
+
 export {
   User,
+  type registerParams,
   isUserRegistered,
   getUserIdByToken,
   getUserById,
   getUserByToken,
+  createNewUserIfNeeded,
 };

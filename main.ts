@@ -1,7 +1,6 @@
 import { connect, dbStateMiddleware } from './db/mongodb.ts';
 import { Ctx, getEndpoints } from './endpoints.ts';
 import { applyMiddleware } from '@/middlewares/applyMiddleware.ts';
-import { Hono } from 'hono';
 import { H } from 'hono/types';
 import { Middleware as auth_validToken } from '@/middlewares/auth/validToken.ts';
 import {
@@ -13,18 +12,16 @@ import {
 import { setMiddleware } from '@/lib/requestTracer.ts';
 import { config } from 'https://deno.land/x/dotenv@v3.2.2/mod.ts';
 import * as Sentry from 'npm:@sentry/node';
-import { OpenAPIHono, createRoute } from 'npm:@hono/zod-openapi';
+import { OpenAPIHono } from 'npm:@hono/zod-openapi';
 import { apiReference } from 'npm:@scalar/hono-api-reference';
 import * as v from 'npm:valibot';
-import { describeRoute } from 'npm:hono-openapi';
-import { vValidator } from 'npm:@hono/valibot-validator';
 import { openAPISpecs } from 'npm:hono-openapi';
 import { addOpenAPIEndpoint, initOpenAPI, openAPI } from '@/lib/openAPI.ts';
-import { z } from 'npm:zod@^3.24.1';
 import {
   OpenAPIMethods,
   type AddOpenAPIEndpointParams,
 } from '@/lib/openAPI.types.ts';
+import { serveStatic } from 'npm:@hono/node-server/serve-static'
 
 config({ export: true, path: '.env.local' });
 
@@ -36,6 +33,8 @@ async function main() {
 
   const app = new OpenAPIHono();
   // const v1 = new OpenAPIHono();
+
+  app.use('/public/*', serveStatic({ root: './' }))
 
   // cors
   app.use(async (c: Ctx, next) => {
@@ -63,54 +62,6 @@ async function main() {
     ],
     excludeMethods: ['options'],
   });
-
-  const querySchema = v.object({
-    name: v.optional(v.string()),
-  });
-
-  const responseSchema = v.string();
-
-  app.get(
-    '/hello',
-    describeRoute({
-      description: 'Say hello to the user',
-      responses: {
-        200: {
-          description: 'Successful response',
-          content: {
-            'text/plain': { schema: resolver(responseSchema) },
-          },
-        },
-      },
-    }),
-    vValidator('query', querySchema),
-    (c) => {
-      const query = c.req.valid('query');
-      return c.text(`Hello ${query?.name ?? 'Hono'}!`);
-    }
-  );
-
-  const helloDocs: AddOpenAPIEndpointParams = {
-    path: '/hello',
-    method: 'get',
-    description: 'Say hello to the user.',
-    inputs: {
-      query: {
-        name: z.string().optional(),
-      },
-      body: v.object({
-        phoneNumber: v.optional(v.string()),
-      }),
-    },
-    responses: {
-      '200': {
-        type: 'plain/text',
-        zodSchema: z.string(),
-      },
-    },
-  };
-
-  addOpenAPIEndpoint(helloDocs);
 
   Sentry.init({
     dsn: Deno.env.get('SENTRY_DSN'),
@@ -227,8 +178,6 @@ async function main() {
     });
   }
 
-  // app.route('/', app)
-
   app.get(
     '/openapi',
     openAPISpecs(app, {
@@ -254,6 +203,8 @@ async function main() {
     apiReference({
       theme: 'saturn',
       spec: { url: '/opendocs' },
+      favicon: '/public/favicon.ico',
+      pageTitle: 'SwiftBuddies API Docs',
     })
   );
 
@@ -261,7 +212,3 @@ async function main() {
 }
 
 await main();
-
-function resolver(responseSchema: v.StringSchema<undefined>) {
-  return responseSchema;
-}

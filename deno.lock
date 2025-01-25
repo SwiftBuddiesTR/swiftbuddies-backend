@@ -15,6 +15,7 @@
     "jsr:@std/media-types@1": "1.1.0",
     "jsr:@std/path@1": "1.0.8",
     "npm:@google-cloud/storage@*": "7.15.0",
+    "npm:@hono/node-server@*": "1.13.7_hono@4.6.18",
     "npm:@hono/valibot-validator@*": "0.5.2_hono@4.6.18_valibot@1.0.0-beta.14",
     "npm:@hono/zod-openapi@*": "0.18.3_hono@4.6.18_zod@3.24.1",
     "npm:@scalar/hono-api-reference@*": "0.5.168_hono@4.6.18",
@@ -129,6 +130,12 @@
         "retry-request",
         "teeny-request",
         "uuid@8.3.2"
+      ]
+    },
+    "@hono/node-server@1.13.7_hono@4.6.18": {
+      "integrity": "sha512-kTfUMsoloVKtRA2fLiGSd9qBddmru9KadNyhJCwgKBxTiNkaAJEwkVN9KV/rS4HtmmNRtUh6P+YpmjRMl0d9vQ==",
+      "dependencies": [
+        "hono"
       ]
     },
     "@hono/valibot-validator@0.5.2_hono@4.6.18_valibot@1.0.0-beta.14": {

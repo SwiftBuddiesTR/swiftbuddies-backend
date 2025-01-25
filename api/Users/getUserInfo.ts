@@ -42,15 +42,16 @@ export async function GET(ctx: Ctx) {
 
 // Configurations
 export const path = '/api/getUserInfo';
+export const middlewares = ['auth:validToken'];
+
 export const validation: ValidationType = {
   query: {
     userId: shouldBeUserId,
   },
 };
-export const middlewares = ['auth:validToken'];
-
 const querySchema = z.object(validation.query as z.ZodRawShape);
 type QueryType = z.infer<typeof querySchema>;
+
 export const openAPI: OpenAPIDoc = {
   description: 'Get the user information',
   tags: ['Users'],

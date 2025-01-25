@@ -10,6 +10,7 @@ async function loadEndpoints() {
   return [
     await import('./api/Users/whoAmI.ts'),
     await import('./api/Users/getUserInfo.ts'),
+    await import('./api/Users/register.ts'),
   ];
 }
 
@@ -26,6 +27,8 @@ type AllMethods =
   | 'CONNECT'
   | 'TRACE';
 
+type StatusCode = 200 | 201 | 202 | 204 | 400 | 401 | 403 | 404 | 500 | any;
+
 type MiddlewareDataArray = Array<{
   middleware: string;
   base: any;
@@ -33,7 +36,7 @@ type MiddlewareDataArray = Array<{
 }>;
 
 type ValidationType = {
-  query:
+  query?:
     | {
         [key: string]: z.ZodType<any, any, any> | string | undefined;
       }
@@ -164,4 +167,5 @@ export {
   getDataFromMiddleware,
   type ValidationType,
   getEndpoints,
+  type StatusCode
 };

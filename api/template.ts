@@ -1,97 +1,58 @@
 import {
-  type ctx,
-  type MiddlewareDataArray,
-  getDataFromMiddleware,
-  SetResponse,
+  type Ctx,
   ValidationType,
 } from '@/endpoints.ts';
-import { IUser } from '@/db/models/Users.ts';
 import { z } from 'npm:zod';
+import { shouldBeUserId } from '@/lib/userIdCheck.ts';
+import { OpenAPIDoc } from "@/lib/openAPI.types.ts";
 
-/**
- * STEP 1: (OPTIONAL) Do this setting on
- * If you using VSCode, enable 'editor.foldingImportsByDefault' to fold imports
- * and get better DX.
- */
-
-/**
- * STEP 2: (REQUIRED) Endpoint path implementation
- * Don't forget to add filepath to endpoints.ts's loadEndpoints function's return array.
- * Because Deno Deploy don't allow dynamic imports cause of security reasons.
- */
-
-/**
- * STEP 3: (REQUIRED) Readability
- * Don't want create a new file? Create it! Readability is most important thing.
- * Split to multiple files if you need. Single Responsibility Principle is base rule.
- */
-
-/**
- * POST /api/postEvent
- *
- * What do: Post the event
- */
-export function POST(ctx: ctx, _middlewareDatas: MiddlewareDataArray): void {
-  // .user means user so developer level which not base(library) level
-  const authData = getDataFromMiddleware(
-    _middlewareDatas,
-    'auth:validToken'
-  ).user;
-  const user = authData as IUser;
-
-  const requestData = getDataFromMiddleware(
-    _middlewareDatas,
-    'dataValidation'
-  ).user;
+export async function GET(ctx: Ctx) {
+  const requestData = ctx.get('dataValidation').user
   const query: QueryType = requestData.query;
   const body: BodyType = requestData.body;
 
-  console.log('logging', query.eventId);
-  console.log('Another logging', body.name);
+  // middleware converts userId to User
+  const _targetUser = query.userId;
+  const _name: string = query.name;
+  const _log: string = body.log;
 
-  return SetResponse(ctx, {
-    status: 200,
-    body: {
-      username: user.username,
-    },
-  });
-}
-
-/**
- * GET /api/postEvent
- *
- * What do: Get the event
- */
-export function GET(ctx: ctx, _middlewareDatas: MiddlewareDataArray): void {
-  return SetResponse(ctx, {
-    status: 200,
-    body: {},
-  });
-  // ...
+  return await ctx.json({message: 'ok'}, 200);
 }
 
 // Configurations
-export const pattern = new URLPattern({ pathname: '/api/postEvent' });
-export const validation: ValidationType = {
-  // Please use for 'GET', 'DELETE', 'OPTIONS' or 'HEAD'
-  // /api/postEvent?test=anystring
-  query: {
-    eventId: z.string().min(4),
-  },
+// ! REQUIRED CONFIGURATION BELOW
+export const path = '/api/ENDPOINT';
+// ! REQUIRED Endpoint path implementation
+// * Don't forget to add filepath to endpoints.ts's loadEndpoints function's return array.
+// * Because Deno Deploy don't allow dynamic imports cause of security reasons.
+////                                                                                       ////
 
-  // Please use for 'POST', 'PUT' or 'PATCH'
-  // /api/postEvent
-  // {
-  //   name: 'anystring',
-  //   description: 'anystring',
-  // }
-  body: z.object({
-    name: z.string().min(5),
-    description: z.string().min(1),
-  }),
-};
+// OPTIONAL CONFIGURATIONS BELOW
 export const middlewares = ['auth:validToken'];
 
+export const validation: ValidationType = {
+  query: {
+    name: z.string().min(1),
+    userId: shouldBeUserId,
+  },
+  body: z.object({
+    log: z.string().min(1),
+  })
+};
 const querySchema = z.object(validation.query as z.ZodRawShape);
 type QueryType = z.infer<typeof querySchema>;
 type BodyType = z.infer<typeof validation.body>;
+
+export const openAPI: OpenAPIDoc = {
+  description: 'Description of the endpoint',
+  tags: ['Folder Name'],
+  responses: {
+    200: {
+      type: 'application/json',
+      zodSchema: z.object({
+        isError: z.boolean(),
+        message: z.string().optional(),
+      }),
+    },
+  },
+}
